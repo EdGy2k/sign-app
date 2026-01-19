@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
 
 export const getOrCreate = internalMutation({
   args: {
@@ -33,6 +32,38 @@ export const getOrCreate = internalMutation({
   },
 });
 
+export const ensureUser = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (existingUser) {
+      return existingUser._id;
+    }
+
+    const now = Date.now();
+    const userId = await ctx.db.insert("users", {
+      email: identity.email ?? "",
+      name: identity.name ?? "Unknown User",
+      clerkId: identity.subject,
+      plan: "free",
+      subscriptionStatus: "none",
+      billingCycleStart: now,
+      createdAt: now,
+    });
+
+    return userId;
+  },
+});
+
 export const me = query({
   args: {},
   handler: async (ctx) => {
@@ -51,7 +82,6 @@ export const me = query({
     }
 
     const billingCycleStart = user.billingCycleStart;
-    const currentTime = Date.now();
 
     const documentsThisMonth = await ctx.db
       .query("documents")
