@@ -15,7 +15,7 @@ export default defineSchema({
     ),
     planExpiresAt: v.optional(v.number()),
     stripeCustomerId: v.optional(v.string()),
-    logoStorageId: v.optional(v.string()),
+    logoStorageId: v.optional(v.id("_storage")),
     billingCycleStart: v.number(),
     createdAt: v.number(),
   }).index("by_clerk_id", ["clerkId"])

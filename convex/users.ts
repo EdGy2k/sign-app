@@ -145,6 +145,11 @@ export const uploadLogo = mutation({
       throw new Error("Logo upload is only available for Pro users");
     }
 
+    const fileUrl = await ctx.storage.getUrl(storageId);
+    if (!fileUrl) {
+      throw new Error("Storage file does not exist");
+    }
+
     await ctx.db.patch(user._id, { logoStorageId: storageId });
 
     return { success: true };
