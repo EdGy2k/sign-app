@@ -81,7 +81,7 @@ export const createCustom = mutation({
       v.literal("invoice"),
       v.literal("other")
     ),
-    pdfStorageId: v.string(),
+    pdfStorageId: v.id("_storage"),
     fields: v.array(
       v.object({
         id: v.string(),
@@ -136,6 +136,11 @@ export const createCustom = mutation({
       throw new Error("User not found");
     }
 
+    const fileUrl = await ctx.storage.getUrl(args.pdfStorageId);
+    if (!fileUrl) {
+      throw new Error("PDF file does not exist in storage");
+    }
+
     const templateId = await ctx.db.insert("templates", {
       name: args.name,
       description: args.description,
@@ -163,7 +168,7 @@ export const update = mutation({
       v.literal("invoice"),
       v.literal("other")
     ),
-    pdfStorageId: v.string(),
+    pdfStorageId: v.id("_storage"),
     fields: v.array(
       v.object({
         id: v.string(),
@@ -292,7 +297,6 @@ export const seedSystemTemplates = mutation({
         name: "Freelance Contract",
         description: "Standard freelance service agreement template with payment terms, deliverables, and intellectual property clauses.",
         category: "contract" as const,
-        pdfStorageId: "placeholder_freelance_contract",
         fields: [
           {
             id: "client_signature",
@@ -362,7 +366,6 @@ export const seedSystemTemplates = mutation({
         name: "Non-Disclosure Agreement",
         description: "Mutual NDA to protect confidential information shared between parties during business discussions.",
         category: "nda" as const,
-        pdfStorageId: "placeholder_nda",
         fields: [
           {
             id: "party_a_signature",
@@ -432,7 +435,6 @@ export const seedSystemTemplates = mutation({
         name: "Project Proposal",
         description: "Professional project proposal template including scope, timeline, budget, and terms.",
         category: "proposal" as const,
-        pdfStorageId: "placeholder_project_proposal",
         fields: [
           {
             id: "client_approval_signature",
@@ -508,7 +510,6 @@ export const seedSystemTemplates = mutation({
         name: "Photography Contract",
         description: "Photography service agreement covering shoot details, deliverables, usage rights, and payment.",
         category: "contract" as const,
-        pdfStorageId: "placeholder_photography_contract",
         fields: [
           {
             id: "photographer_signature",
@@ -596,7 +597,6 @@ export const seedSystemTemplates = mutation({
         name: "Web Design Contract",
         description: "Web design and development contract template including project milestones, revisions, and ownership terms.",
         category: "contract" as const,
-        pdfStorageId: "placeholder_web_design_contract",
         fields: [
           {
             id: "designer_signature",
@@ -688,6 +688,7 @@ export const seedSystemTemplates = mutation({
       const templateId = await ctx.db.insert("templates", {
         ...template,
         isSystemTemplate: true,
+        ownerId: undefined,
       });
       templateIds.push(templateId);
     }

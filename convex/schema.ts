@@ -33,7 +33,7 @@ export default defineSchema({
     ),
     isSystemTemplate: v.boolean(),
     ownerId: v.optional(v.id("users")),
-    pdfStorageId: v.string(),
+    pdfStorageId: v.optional(v.id("_storage")),
     fields: v.array(
       v.object({
         id: v.string(),
@@ -88,8 +88,8 @@ export default defineSchema({
       v.literal("expired"),
       v.literal("voided")
     ),
-    originalPdfStorageId: v.string(),
-    signedPdfStorageId: v.optional(v.string()),
+    originalPdfStorageId: v.id("_storage"),
+    signedPdfStorageId: v.optional(v.id("_storage")),
     variableValues: v.object({}),
     fields: v.array(
       v.object({
