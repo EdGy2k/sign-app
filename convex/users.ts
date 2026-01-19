@@ -150,6 +150,10 @@ export const uploadLogo = mutation({
       throw new Error("Storage file does not exist");
     }
 
+    if (user.logoStorageId) {
+      await ctx.storage.delete(user.logoStorageId);
+    }
+
     await ctx.db.patch(user._id, { logoStorageId: storageId });
 
     return { success: true };
