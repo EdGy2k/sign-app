@@ -4,6 +4,10 @@ import { Id } from "./_generated/dataModel";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
+function isExpired(document: { expiresAt?: number }): boolean {
+  return document.expiresAt !== undefined && document.expiresAt < Date.now();
+}
+
 const fieldValidator = v.object({
   id: v.string(),
   type: v.union(
@@ -108,14 +112,19 @@ export const get = query({
       throw new Error("Not authorized to view this document");
     }
 
+    if (isExpired(document) && document.status !== "expired") {
+      await ctx.db.patch(id, { status: "expired" });
+      document.status = "expired";
+    }
+
     const recipients = await ctx.db
       .query("recipients")
-      .withIndex("by_document", (q) => q.eq("documentId", id as string))
+      .withIndex("by_document", (q) => q.eq("documentId", id))
       .collect();
 
     const auditLog = await ctx.db
       .query("auditLog")
-      .withIndex("by_document", (q) => q.eq("documentId", id as string))
+      .withIndex("by_document", (q) => q.eq("documentId", id))
       .collect();
 
     return {
@@ -179,7 +188,7 @@ export const create = mutation({
     });
 
     await ctx.db.insert("auditLog", {
-      documentId: documentId as string,
+      documentId: documentId,
       event: "created",
       actorEmail: user.email,
       timestamp: now,
@@ -222,6 +231,11 @@ export const send = mutation({
       throw new Error("Only draft documents can be sent");
     }
 
+    if (isExpired(document)) {
+      await ctx.db.patch(id, { status: "expired" });
+      throw new Error("Document has expired");
+    }
+
     if (recipients.length === 0) {
       throw new Error("At least one recipient is required");
     }
@@ -239,7 +253,7 @@ export const send = mutation({
       const accessToken = crypto.randomUUID();
 
       await ctx.db.insert("recipients", {
-        documentId: id as string,
+        documentId: id,
         email: recipient.email,
         name: recipient.name,
         role: recipient.role,
@@ -250,7 +264,7 @@ export const send = mutation({
     }
 
     await ctx.db.insert("auditLog", {
-      documentId: id as string,
+      documentId: id,
       event: "sent",
       actorEmail: user.email,
       timestamp: now,
@@ -297,6 +311,11 @@ export const void_ = mutation({
       throw new Error("Cannot void a signed document");
     }
 
+    if (isExpired(document) && document.status !== "expired") {
+      await ctx.db.patch(id, { status: "expired" });
+      throw new Error("Document has expired");
+    }
+
     const now = Date.now();
 
     await ctx.db.patch(id, {
@@ -305,7 +324,7 @@ export const void_ = mutation({
     });
 
     await ctx.db.insert("auditLog", {
-      documentId: id as string,
+      documentId: id,
       event: "voided",
       actorEmail: user.email,
       timestamp: now,
@@ -348,9 +367,14 @@ export const resendReminder = mutation({
       throw new Error("Can only resend reminders for sent or viewed documents");
     }
 
+    if (isExpired(document)) {
+      await ctx.db.patch(documentId, { status: "expired" });
+      throw new Error("Document has expired");
+    }
+
     const recipient = await ctx.db
       .query("recipients")
-      .withIndex("by_document", (q) => q.eq("documentId", documentId as string))
+      .withIndex("by_document", (q) => q.eq("documentId", documentId))
       .filter((q) => q.eq(q.field("email"), recipientEmail))
       .unique();
 

@@ -127,7 +127,7 @@ export default defineSchema({
     .index("by_created_at", ["createdAt"]),
 
   recipients: defineTable({
-    documentId: v.string(),
+    documentId: v.id("documents"),
     email: v.string(),
     name: v.string(),
     role: v.union(v.literal("signer"), v.literal("cc")),
@@ -147,7 +147,7 @@ export default defineSchema({
     .index("by_email", ["email"]),
 
   auditLog: defineTable({
-    documentId: v.string(),
+    documentId: v.id("documents"),
     event: v.union(
       v.literal("created"),
       v.literal("sent"),

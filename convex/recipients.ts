@@ -16,7 +16,7 @@ export const getByToken = query({
       throw new Error("Invalid access token");
     }
 
-    const document = await ctx.db.get(recipient.documentId as Id<"documents">);
+    const document = await ctx.db.get(recipient.documentId);
     if (!document) {
       throw new Error("Document not found");
     }
@@ -71,7 +71,7 @@ export const getByToken = query({
 
 export const createRecipient = internalMutation({
   args: {
-    documentId: v.string(),
+    documentId: v.id("documents"),
     email: v.string(),
     name: v.string(),
     role: v.union(v.literal("signer"), v.literal("cc")),
@@ -111,7 +111,13 @@ export const updateRecipientStatus = internalMutation({
       throw new Error("Recipient not found");
     }
 
-    const updateData: any = {
+    const updateData: {
+      status: "pending" | "viewed" | "signed";
+      signedAt?: number;
+      signatureData?: string;
+      ipAddress?: string;
+      userAgent?: string;
+    } = {
       status: args.status,
     };
 
