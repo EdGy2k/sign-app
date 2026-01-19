@@ -32,7 +32,7 @@ export default defineSchema({
       v.literal("other")
     ),
     isSystemTemplate: v.boolean(),
-    ownerId: v.optional(v.string()),
+    ownerId: v.optional(v.id("users")),
     pdfStorageId: v.string(),
     fields: v.array(
       v.object({
@@ -77,7 +77,7 @@ export default defineSchema({
     .index("by_category", ["category"]),
 
   documents: defineTable({
-    ownerId: v.string(),
+    ownerId: v.id("users"),
     templateId: v.optional(v.string()),
     title: v.string(),
     status: v.union(

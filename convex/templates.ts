@@ -237,7 +237,7 @@ export const update = mutation({
   },
 });
 
-export const deleteTemplate = mutation({
+export const remove = mutation({
   args: {
     id: v.id("templates"),
   },
