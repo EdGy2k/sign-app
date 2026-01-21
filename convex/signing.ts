@@ -283,6 +283,10 @@ export const complete = mutation({
       await ctx.scheduler.runAfter(0, internal.pdfGeneration.generateSignedPdf, {
         documentId: document._id,
       });
+
+      await ctx.scheduler.runAfter(0, internal.email.sendSigningComplete, {
+        documentId: document._id,
+      });
     }
 
     return { success: true, allComplete: allSignersSigned };

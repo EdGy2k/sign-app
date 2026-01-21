@@ -252,7 +252,7 @@ export const send = mutation({
     for (const recipient of recipients) {
       const accessToken = crypto.randomUUID();
 
-      await ctx.db.insert("recipients", {
+      const recipientId = await ctx.db.insert("recipients", {
         documentId: id,
         email: recipient.email,
         name: recipient.name,
@@ -260,6 +260,10 @@ export const send = mutation({
         order: recipient.order,
         status: "pending",
         accessToken,
+      });
+
+      await ctx.scheduler.runAfter(0, internal.email.sendSigningRequest, {
+        recipientId,
       });
     }
 
@@ -383,6 +387,10 @@ export const resendReminder = mutation({
     if (recipient.status === "signed") {
       throw new Error("Recipient has already signed the document");
     }
+
+    await ctx.scheduler.runAfter(0, internal.email.sendReminder, {
+      recipientId: recipient._id,
+    });
 
     return { success: true, message: "Email reminder will be sent" };
   },

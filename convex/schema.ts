@@ -14,7 +14,7 @@ export default defineSchema({
       v.literal("none")
     ),
     planExpiresAt: v.optional(v.number()),
-    stripeCustomerId: v.optional(v.string()),
+    polarCustomerId: v.optional(v.string()),
     logoStorageId: v.optional(v.id("_storage")),
     billingCycleStart: v.number(),
     createdAt: v.number(),
