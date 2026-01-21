@@ -107,6 +107,20 @@ export const updateProfile = mutation({
       throw new Error("Not authenticated");
     }
 
+    const trimmedName = name.trim();
+
+    if (trimmedName.length === 0) {
+      throw new Error("Name cannot be empty");
+    }
+
+    if (trimmedName.length > 100) {
+      throw new Error("Name too long (max 100 characters)");
+    }
+
+    if (!/^[\p{L}\p{N}\s\-'.]+$/u.test(trimmedName)) {
+      throw new Error("Name contains invalid characters");
+    }
+
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
@@ -116,7 +130,7 @@ export const updateProfile = mutation({
       throw new Error("User not found");
     }
 
-    await ctx.db.patch(user._id, { name });
+    await ctx.db.patch(user._id, { name: trimmedName });
 
     return { success: true };
   },

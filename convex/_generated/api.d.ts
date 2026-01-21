@@ -12,6 +12,7 @@ import type * as auditLog from "../auditLog.js";
 import type * as billing from "../billing.js";
 import type * as documents from "../documents.js";
 import type * as email from "../email.js";
+import type * as emailUtils from "../emailUtils.js";
 import type * as http from "../http.js";
 import type * as pdfGeneration from "../pdfGeneration.js";
 import type * as recipients from "../recipients.js";
@@ -31,6 +32,7 @@ declare const fullApi: ApiFromModules<{
   billing: typeof billing;
   documents: typeof documents;
   email: typeof email;
+  emailUtils: typeof emailUtils;
   http: typeof http;
   pdfGeneration: typeof pdfGeneration;
   recipients: typeof recipients;

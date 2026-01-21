@@ -11,7 +11,7 @@ import { UserButton } from "@clerk/nextjs";
 
 export default function SettingsPage() {
     const user = useQuery(api.users.me);
-    const subscription = useQuery(api.billing.getSubscription);
+    const subscription = useQuery(api.billing.getSubscription, user ? undefined : "skip");
     const updateProfile = useMutation(api.users.updateProfile);
 
     if (user === undefined) return <div className="p-8">Loading settings...</div>;

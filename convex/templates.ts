@@ -4,6 +4,11 @@ import { mutation, query } from "./_generated/server";
 export const listSystem = query({
   args: {},
   handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
     return await ctx.db
       .query("templates")
       .withIndex("by_system_template", (q) => q.eq("isSystemTemplate", true))
@@ -66,7 +71,10 @@ export const get = query({
       }
     }
 
-    return template;
+    const pdfUrl = template.pdfStorageId
+      ? await ctx.storage.getUrl(template.pdfStorageId)
+      : null;
+    return { ...template, pdfUrl };
   },
 });
 

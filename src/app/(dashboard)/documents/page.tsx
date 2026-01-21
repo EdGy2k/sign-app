@@ -13,9 +13,9 @@ import { useState } from "react";
 export default function DocumentsPage() {
     const [search, setSearch] = useState("");
     const user = useQuery(api.users.me);
-    const documents = useQuery(api.documents.list, {});
+    const documents = useQuery(api.documents.list, user ? {} : "skip");
 
-    if (user === undefined || documents === undefined) {
+    if (user === undefined) {
         return <div className="p-8">Loading documents...</div>;
     }
 

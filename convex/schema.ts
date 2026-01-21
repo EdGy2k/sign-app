@@ -143,6 +143,7 @@ export default defineSchema({
     accessToken: v.string(),
     ipAddress: v.optional(v.string()),
     userAgent: v.optional(v.string()),
+    tokenExpiresAt: v.optional(v.number()),
   }).index("by_document", ["documentId"])
     .index("by_access_token", ["accessToken"])
     .index("by_email", ["email"]),
@@ -155,7 +156,8 @@ export default defineSchema({
       v.literal("viewed"),
       v.literal("signed"),
       v.literal("voided"),
-      v.literal("downloaded")
+      v.literal("downloaded"),
+      v.literal("reminder_sent")
     ),
     actorEmail: v.string(),
     ipAddress: v.optional(v.string()),

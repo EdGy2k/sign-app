@@ -30,8 +30,17 @@ export default function NewDocumentPage() {
     const [recipientName, setRecipientName] = useState("");
     const [recipientEmail, setRecipientEmail] = useState("");
 
-    const templates = useQuery(api.templates.listSystem);
+    const user = useQuery(api.users.me);
+    const templates = useQuery(api.templates.listSystem, user ? undefined : "skip");
     const createDocument = useMutation(api.documents.create);
+
+    if (user === undefined) {
+        return <div className="p-8">Loading...</div>;
+    }
+
+    if (user === null) {
+        return <div className="p-8">Please sign in</div>;
+    }
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];

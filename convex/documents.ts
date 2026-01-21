@@ -128,8 +128,15 @@ export const get = query({
       .withIndex("by_document", (q) => q.eq("documentId", id))
       .collect();
 
+    const originalPdfUrl = await ctx.storage.getUrl(document.originalPdfStorageId);
+    const signedPdfUrl = document.signedPdfStorageId
+      ? await ctx.storage.getUrl(document.signedPdfStorageId)
+      : null;
+
     return {
       ...document,
+      originalPdfUrl,
+      signedPdfUrl,
       recipients: recipients.sort((a, b) => a.order - b.order),
       auditLog: auditLog.sort((a, b) => a.timestamp - b.timestamp),
     };
@@ -157,6 +164,14 @@ export const create = mutation({
 
     if (!user) {
       throw new Error("User not found");
+    }
+
+    const trimmedTitle = args.title.trim();
+    if (trimmedTitle.length === 0) {
+      throw new Error("Document title cannot be empty");
+    }
+    if (trimmedTitle.length > 200) {
+      throw new Error("Document title too long (max 200 characters)");
     }
 
     const fileUrl = await ctx.storage.getUrl(args.originalPdfStorageId);
@@ -240,6 +255,24 @@ export const send = mutation({
       throw new Error("At least one recipient is required");
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    for (const recipient of recipients) {
+      if (!emailRegex.test(recipient.email)) {
+        throw new Error(`Invalid email address: ${recipient.email}`);
+      }
+      if (recipient.email.length > 254) {
+        throw new Error("Email address too long");
+      }
+
+      const trimmedName = recipient.name.trim();
+      if (trimmedName.length === 0) {
+        throw new Error("Recipient name cannot be empty");
+      }
+      if (trimmedName.length > 100) {
+        throw new Error("Recipient name too long (max 100 characters)");
+      }
+    }
+
     const now = Date.now();
     const expiresAt = now + THIRTY_DAYS_MS;
 
@@ -249,8 +282,16 @@ export const send = mutation({
       expiresAt,
     });
 
+    function generateSecureToken(): string {
+      const array = new Uint8Array(32); // 256 bits
+      crypto.getRandomValues(array);
+      return Array.from(array, (byte) =>
+        byte.toString(16).padStart(2, "0")
+      ).join("");
+    }
+
     for (const recipient of recipients) {
-      const accessToken = crypto.randomUUID();
+      const accessToken = generateSecureToken();
 
       const recipientId = await ctx.db.insert("recipients", {
         documentId: id,
@@ -260,6 +301,7 @@ export const send = mutation({
         order: recipient.order,
         status: "pending",
         accessToken,
+        tokenExpiresAt: expiresAt,
       });
 
       await ctx.scheduler.runAfter(0, internal.email.sendSigningRequest, {
@@ -388,8 +430,32 @@ export const resendReminder = mutation({
       throw new Error("Recipient has already signed the document");
     }
 
+    // Check rate limit
+    const oneHourAgo = Date.now() - 3600000;
+    const recentReminders = await ctx.db
+      .query("auditLog")
+      .withIndex("by_document", (q) => q.eq("documentId", documentId))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("event"), "reminder_sent"),
+          q.eq(q.field("actorEmail"), recipientEmail),
+          q.gte(q.field("timestamp"), oneHourAgo)
+        )
+      )
+      .collect();
+
+    if (recentReminders.length >= 3) {
+      throw new Error("Reminder limit reached. Maximum 3 reminders per hour.");
+    }
+
     await ctx.scheduler.runAfter(0, internal.email.sendReminder, {
       recipientId: recipient._id,
+    });
+
+    await ctx.scheduler.runAfter(0, internal.auditLog.log, {
+      documentId,
+      event: "reminder_sent",
+      actorEmail: recipientEmail,
     });
 
     return { success: true, message: "Email reminder will be sent" };

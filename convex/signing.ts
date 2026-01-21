@@ -21,6 +21,10 @@ export const getDocumentByToken = query({
       throw new Error("Invalid access token");
     }
 
+    if (recipient.tokenExpiresAt && recipient.tokenExpiresAt < Date.now()) {
+      throw new Error("This signing link has expired");
+    }
+
     const document = await ctx.db.get(recipient.documentId);
     if (!document) {
       throw new Error("Document not found");
@@ -94,6 +98,10 @@ export const markViewed = mutation({
       throw new Error("Invalid access token");
     }
 
+    if (recipient.tokenExpiresAt && recipient.tokenExpiresAt < Date.now()) {
+      throw new Error("This signing link has expired");
+    }
+
     const document = await ctx.db.get(recipient.documentId);
     if (!document) {
       throw new Error("Document not found");
@@ -149,6 +157,10 @@ export const submitSignature = mutation({
       throw new Error("Invalid access token");
     }
 
+    if (recipient.tokenExpiresAt && recipient.tokenExpiresAt < Date.now()) {
+      throw new Error("This signing link has expired");
+    }
+
     const document = await ctx.db.get(recipient.documentId);
     if (!document) {
       throw new Error("Document not found");
@@ -187,6 +199,11 @@ export const submitSignature = mutation({
 
     signatureData[fieldId] = signatureValue;
 
+    const totalSize = JSON.stringify(signatureData).length;
+    if (totalSize > 500000) {
+      throw new Error("Total signature data exceeds limit (500KB)");
+    }
+
     await ctx.db.patch(recipient._id, {
       signatureData: JSON.stringify(signatureData),
       ipAddress,
@@ -211,6 +228,10 @@ export const complete = mutation({
 
     if (!recipient) {
       throw new Error("Invalid access token");
+    }
+
+    if (recipient.tokenExpiresAt && recipient.tokenExpiresAt < Date.now()) {
+      throw new Error("This signing link has expired");
     }
 
     const document = await ctx.db.get(recipient.documentId);

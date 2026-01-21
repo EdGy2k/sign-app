@@ -56,15 +56,13 @@ http.route({
 
     try {
       const webhookSecret = getWebhookSecret();
-      if (webhookSecret) {
-        const wh = new Webhook(webhookSecret);
-        payload = wh.verify(body, webhookHeaders) as PolarWebhookPayload;
-      } else {
-        console.warn(
-          "POLAR_WEBHOOK_SECRET not set, skipping signature verification"
-        );
-        payload = JSON.parse(body) as PolarWebhookPayload;
+      if (!webhookSecret) {
+        console.error("POLAR_WEBHOOK_SECRET not configured - rejecting webhook");
+        return new Response("Webhook endpoint not configured", { status: 503 });
       }
+
+      const wh = new Webhook(webhookSecret);
+      payload = wh.verify(body, webhookHeaders) as PolarWebhookPayload;
     } catch (error) {
       console.error("Webhook verification failed:", error);
       return new Response("Webhook verification failed", { status: 401 });

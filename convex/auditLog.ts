@@ -11,7 +11,8 @@ export const log = internalMutation({
       v.literal("viewed"),
       v.literal("signed"),
       v.literal("voided"),
-      v.literal("downloaded")
+      v.literal("downloaded"),
+      v.literal("reminder_sent")
     ),
     actorEmail: v.string(),
     ipAddress: v.optional(v.string()),

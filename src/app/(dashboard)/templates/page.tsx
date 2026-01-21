@@ -10,8 +10,17 @@ import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function TemplatesPage() {
-    const systemTemplates = useQuery(api.templates.listSystem);
-    const myTemplates = useQuery(api.templates.listMine);
+    const user = useQuery(api.users.me);
+    const systemTemplates = useQuery(api.templates.listSystem, user ? undefined : "skip");
+    const myTemplates = useQuery(api.templates.listMine, user ? undefined : "skip");
+
+    if (user === undefined) {
+        return <div className="p-8">Loading templates...</div>;
+    }
+
+    if (user === null) {
+        return <div className="p-8">Please sign in</div>;
+    }
 
     return (
         <div className="space-y-6">

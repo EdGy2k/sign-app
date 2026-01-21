@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 
 export default function DashboardPage() {
     const user = useQuery(api.users.me);
-    const documents = useQuery(api.documents.list, {});
+    const documents = useQuery(api.documents.list, user ? {} : "skip");
 
     if (user === undefined) {
         return <div className="p-8">Loading dashboard...</div>;
@@ -18,10 +18,6 @@ export default function DashboardPage() {
 
     if (user === null) {
         return <div className="p-8">Please sign in</div>;
-    }
-
-    if (!user) {
-        return <div className="p-8">Loading dashboard...</div>;
     }
 
     const recentDocs = documents?.slice(0, 5) || [];

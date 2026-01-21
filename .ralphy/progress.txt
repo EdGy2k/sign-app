@@ -1,0 +1,13 @@
+# Ralphy Progress Log
+
+- [✗] 2026-01-21 15:52 - All email subjects escape user content
+- [✗] 2026-01-21 16:14 - All email subjects escape user content
+- [✗] 2026-01-21 16:19 - All email subjects escape user content
+- [✗] 2026-01-21 16:23 - All email subjects escape user content
+- [✗] 2026-01-21 16:27 - All email subjects escape user content
+- [✗] 2026-01-21 16:31 - All email subjects escape user content
+- [✗] 2026-01-21 16:36 - All email subjects escape user content
+- [✗] 2026-01-21 16:39 - All email subjects escape user content
+- [✗] 2026-01-21 16:44 - All email subjects escape user content
+- [✗] 2026-01-21 16:48 - All email subjects escape user content
+- [✗] 2026-01-21 16:52 - All email subjects escape user content

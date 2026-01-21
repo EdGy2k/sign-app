@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalAction, internalQuery } from "./_generated/server";
 import { Resend } from "resend";
 import { internal } from "./_generated/api";
+import { escapeSubject } from "./emailUtils";
 
 function getResendClient() {
   const apiKey = process.env.RESEND_API_KEY;
@@ -235,7 +236,7 @@ export const sendSigningRequest = internalAction({
       const result = await resend.emails.send({
         from: "Document Signing <noreply@yourdomain.com>",
         to: recipient.email,
-        subject: `${recipient.senderName} sent you a document to sign`,
+        subject: `${escapeSubject(recipient.senderName)} sent you a document to sign`,
         html,
       });
 
@@ -275,7 +276,7 @@ export const sendSigningComplete = internalAction({
         const result = await resend.emails.send({
           from: "Document Signing <noreply@yourdomain.com>",
           to: party.email,
-          subject: `Document "${documentData.title}" has been signed by all parties`,
+          subject: `Document "${escapeSubject(documentData.title)}" has been signed by all parties`,
           html,
         });
 
@@ -314,7 +315,7 @@ export const sendReminder = internalAction({
       const result = await resend.emails.send({
         from: "Document Signing <noreply@yourdomain.com>",
         to: recipient.email,
-        subject: `Reminder: Please sign "${recipient.documentTitle}"`,
+        subject: `Reminder: Please sign "${escapeSubject(recipient.documentTitle)}"`,
         html,
       });
 

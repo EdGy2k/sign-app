@@ -194,7 +194,15 @@ export const generateSignedPdf = internalAction({
 
     yPosition -= 40;
 
-    currentPage.drawText(`Document: ${document.title}`, {
+    function sanitizePdfText(text: string, maxLength: number = 200): string {
+      return text
+        .replace(/[\r\n\t]/g, " ")
+        .replace(/[^\x20-\x7E\xA0-\xFF]/g, "")
+        .substring(0, maxLength)
+        .trim();
+    }
+
+    currentPage.drawText(`Document: ${sanitizePdfText(document.title)}`, {
       x: 50,
       y: yPosition,
       size: 12,
@@ -258,7 +266,7 @@ export const generateSignedPdf = internalAction({
 
       yPosition -= 15;
 
-      currentPage.drawText(`  Actor: ${log.actorEmail}`, {
+      currentPage.drawText(`  Actor: ${sanitizePdfText(log.actorEmail)}`, {
         x: 70,
         y: yPosition,
         size: 9,
@@ -269,7 +277,7 @@ export const generateSignedPdf = internalAction({
       yPosition -= 12;
 
       if (log.ipAddress) {
-        currentPage.drawText(`  IP Address: ${log.ipAddress}`, {
+        currentPage.drawText(`  IP Address: ${sanitizePdfText(log.ipAddress)}`, {
           x: 70,
           y: yPosition,
           size: 9,
@@ -278,6 +286,7 @@ export const generateSignedPdf = internalAction({
         });
         yPosition -= 12;
       }
+
 
       yPosition -= 10;
     }
