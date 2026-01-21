@@ -69,11 +69,23 @@ export const generateSignedPdf = internalAction({
     }
 
     const originalPdfResponse = await fetch(originalPdfUrl);
+    if (!originalPdfResponse.ok) {
+      throw new Error(`Failed to fetch PDF: ${originalPdfResponse.status}`);
+    }
+
     const originalPdfBytes = await originalPdfResponse.arrayBuffer();
 
     const originalPdfHash = await generateSHA256Hash(originalPdfBytes);
 
-    const pdfDoc = await PDFDocument.load(originalPdfBytes);
+    let pdfDoc;
+    try {
+      pdfDoc = await PDFDocument.load(originalPdfBytes);
+    } catch (e) {
+      throw new Error(`Failed to load PDF: ${e instanceof Error ? e.message : 'Unknown error'}`);
+    }
+
+    const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
     for (const recipient of document.recipients) {
       if (!recipient.signatureData) {
@@ -102,6 +114,11 @@ export const generateSignedPdf = internalAction({
           continue;
         }
 
+        const pageCount = pdfDoc.getPageCount();
+        if (field.page < 0 || field.page >= pageCount) {
+          continue;
+        }
+
         const page = pdfDoc.getPage(field.page);
         const { height: pageHeight } = page.getSize();
 
@@ -110,14 +127,24 @@ export const generateSignedPdf = internalAction({
         if (field.type === "signature" || field.type === "initials") {
           if (signatureValue.startsWith("data:image")) {
             const base64Data = signatureValue.split(",")[1];
-            const imageBytes = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
+
+            let imageBytes;
+            try {
+              imageBytes = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
+            } catch (e) {
+              continue;
+            }
 
             let image;
-            if (signatureValue.includes("image/png")) {
-              image = await pdfDoc.embedPng(imageBytes);
-            } else if (signatureValue.includes("image/jpeg") || signatureValue.includes("image/jpg")) {
-              image = await pdfDoc.embedJpg(imageBytes);
-            } else {
+            try {
+              if (signatureValue.includes("image/png")) {
+                image = await pdfDoc.embedPng(imageBytes);
+              } else if (signatureValue.includes("image/jpeg") || signatureValue.includes("image/jpg")) {
+                image = await pdfDoc.embedJpg(imageBytes);
+              } else {
+                continue;
+              }
+            } catch (e) {
               continue;
             }
 
@@ -129,24 +156,22 @@ export const generateSignedPdf = internalAction({
             });
           }
         } else if (field.type === "text" || field.type === "date") {
-          const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
           const fontSize = 12;
 
           page.drawText(signatureValue, {
             x: field.x,
             y: yCoordinate + field.height / 2 - fontSize / 2,
             size: fontSize,
-            font: font,
+            font: helveticaFont,
             color: rgb(0, 0, 0),
           });
         } else if (field.type === "checkbox") {
           if (signatureValue === "true" || signatureValue === "checked") {
-            const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
             page.drawText("✓", {
               x: field.x,
               y: yCoordinate,
               size: field.height * 0.8,
-              font: font,
+              font: helveticaFont,
               color: rgb(0, 0, 0),
             });
           }
@@ -157,16 +182,13 @@ export const generateSignedPdf = internalAction({
     let currentPage = pdfDoc.addPage();
     const { width: pageWidth, height: pageHeight } = currentPage.getSize();
 
-    const titleFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-    const regularFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-
     let yPosition = pageHeight - 50;
 
     currentPage.drawText("AUDIT TRAIL", {
       x: 50,
       y: yPosition,
       size: 20,
-      font: titleFont,
+      font: helveticaBoldFont,
       color: rgb(0, 0, 0),
     });
 
@@ -176,7 +198,7 @@ export const generateSignedPdf = internalAction({
       x: 50,
       y: yPosition,
       size: 12,
-      font: regularFont,
+      font: helveticaFont,
       color: rgb(0, 0, 0),
     });
 
@@ -186,7 +208,7 @@ export const generateSignedPdf = internalAction({
       x: 50,
       y: yPosition,
       size: 10,
-      font: regularFont,
+      font: helveticaFont,
       color: rgb(0.3, 0.3, 0.3),
     });
 
@@ -196,7 +218,7 @@ export const generateSignedPdf = internalAction({
       x: 50,
       y: yPosition,
       size: 14,
-      font: titleFont,
+      font: helveticaBoldFont,
       color: rgb(0, 0, 0),
     });
 
@@ -210,7 +232,7 @@ export const generateSignedPdf = internalAction({
           x: 50,
           y: yPosition,
           size: 16,
-          font: titleFont,
+          font: helveticaBoldFont,
           color: rgb(0, 0, 0),
         });
         yPosition -= 30;
@@ -230,7 +252,7 @@ export const generateSignedPdf = internalAction({
         x: 60,
         y: yPosition,
         size: 10,
-        font: titleFont,
+        font: helveticaBoldFont,
         color: rgb(0, 0, 0),
       });
 
@@ -240,7 +262,7 @@ export const generateSignedPdf = internalAction({
         x: 70,
         y: yPosition,
         size: 9,
-        font: regularFont,
+        font: helveticaFont,
         color: rgb(0.2, 0.2, 0.2),
       });
 
@@ -251,7 +273,7 @@ export const generateSignedPdf = internalAction({
           x: 70,
           y: yPosition,
           size: 9,
-          font: regularFont,
+          font: helveticaFont,
           color: rgb(0.2, 0.2, 0.2),
         });
         yPosition -= 12;
@@ -271,7 +293,7 @@ export const generateSignedPdf = internalAction({
       x: 50,
       y: yPosition,
       size: 14,
-      font: titleFont,
+      font: helveticaBoldFont,
       color: rgb(0, 0, 0),
     });
 
@@ -287,7 +309,7 @@ export const generateSignedPdf = internalAction({
         x: 60,
         y: yPosition,
         size: 10,
-        font: titleFont,
+        font: helveticaBoldFont,
         color: rgb(0, 0, 0),
       });
 
@@ -297,7 +319,7 @@ export const generateSignedPdf = internalAction({
         x: 70,
         y: yPosition,
         size: 9,
-        font: regularFont,
+        font: helveticaFont,
         color: rgb(0.2, 0.2, 0.2),
       });
 
@@ -318,7 +340,7 @@ export const generateSignedPdf = internalAction({
           x: 70,
           y: yPosition,
           size: 9,
-          font: regularFont,
+          font: helveticaFont,
           color: rgb(0.2, 0.2, 0.2),
         });
 
@@ -330,7 +352,7 @@ export const generateSignedPdf = internalAction({
           x: 70,
           y: yPosition,
           size: 9,
-          font: regularFont,
+          font: helveticaFont,
           color: rgb(0.2, 0.2, 0.2),
         });
 
