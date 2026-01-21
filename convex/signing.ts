@@ -31,9 +31,6 @@ export const getDocumentByToken = query({
     }
 
     if (isExpired(document)) {
-      if (document.status !== "expired") {
-        await ctx.db.patch(document._id, { status: "expired" });
-      }
       throw new Error("This document has expired");
     }
 
@@ -107,14 +104,11 @@ export const markViewed = mutation({
     }
 
     if (isExpired(document)) {
-      if (document.status !== "expired") {
-        await ctx.db.patch(document._id, { status: "expired" });
-      }
       throw new Error("This document has expired");
     }
 
     if (recipient.status === "pending") {
-      await ctx.scheduler.runAfter(0, internal.recipients.updateRecipientStatus, {
+      await ctx.runMutation(internal.recipients.updateRecipientStatus, {
         recipientId: recipient._id,
         status: "viewed",
         ipAddress,
@@ -139,6 +133,13 @@ export const submitSignature = mutation({
     userAgent: v.optional(v.string()),
   },
   handler: async (ctx, { token, fieldId, signatureValue, ipAddress, userAgent }) => {
+    if (!signatureValue || signatureValue.trim().length === 0) {
+      throw new Error("Signature value cannot be empty");
+    }
+    if (signatureValue.length > 100000) {
+      throw new Error("Signature value too large");
+    }
+
     const recipient = await ctx.db
       .query("recipients")
       .withIndex("by_access_token", (q) => q.eq("accessToken", token))
@@ -158,9 +159,6 @@ export const submitSignature = mutation({
     }
 
     if (isExpired(document)) {
-      if (document.status !== "expired") {
-        await ctx.db.patch(document._id, { status: "expired" });
-      }
       throw new Error("This document has expired");
     }
 
@@ -225,9 +223,6 @@ export const complete = mutation({
     }
 
     if (isExpired(document)) {
-      if (document.status !== "expired") {
-        await ctx.db.patch(document._id, { status: "expired" });
-      }
       throw new Error("This document has expired");
     }
 
@@ -258,7 +253,7 @@ export const complete = mutation({
       }
     }
 
-    await ctx.scheduler.runAfter(0, internal.recipients.updateRecipientStatus, {
+    await ctx.runMutation(internal.recipients.updateRecipientStatus, {
       recipientId: recipient._id,
       status: "signed",
       signatureData: JSON.stringify(signatureData),
