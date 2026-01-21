@@ -1,0 +1,10 @@
+{
+  "version": "5.2.0",
+  "project_name": "sign-app",
+  "tech_stack": "Next.js, TypeScript, React, Convex, Clerk, Tailwind CSS, Radix UI, pdf-lib, Resend, Polar",
+  "project_management": "none",
+  "task_prefix": "TASK",
+  "team_chat": "none",
+  "auto_load_navigator": true,
+  "compact_strategy": "conservative"
+}

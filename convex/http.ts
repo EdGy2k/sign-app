@@ -5,7 +5,9 @@ import { Webhook } from "standardwebhooks";
 
 const http = httpRouter();
 
-const POLAR_WEBHOOK_SECRET = process.env.POLAR_WEBHOOK_SECRET || "";
+function getWebhookSecret() {
+  return process.env.POLAR_WEBHOOK_SECRET || "";
+}
 
 interface PolarWebhookPayload {
   type: string;
@@ -53,8 +55,9 @@ http.route({
     let payload: PolarWebhookPayload;
 
     try {
-      if (POLAR_WEBHOOK_SECRET) {
-        const wh = new Webhook(POLAR_WEBHOOK_SECRET);
+      const webhookSecret = getWebhookSecret();
+      if (webhookSecret) {
+        const wh = new Webhook(webhookSecret);
         payload = wh.verify(body, webhookHeaders) as PolarWebhookPayload;
       } else {
         console.warn(

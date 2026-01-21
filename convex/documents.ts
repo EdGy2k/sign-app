@@ -114,7 +114,7 @@ export const get = query({
     }
 
     if (isExpired(document) && document.status !== "expired") {
-      await ctx.db.patch(id, { status: "expired" });
+      // await ctx.db.patch(id, { status: "expired" }); // Cannot patch in query
       document.status = "expired";
     }
 

@@ -3,18 +3,24 @@ import { action, internalMutation, internalQuery, query } from "./_generated/ser
 import { Polar } from "@polar-sh/sdk";
 import { internal } from "./_generated/api";
 
-const polar = new Polar({
-  accessToken: process.env.POLAR_ACCESS_TOKEN,
-});
+function getPolarClient() {
+  const accessToken = process.env.POLAR_ACCESS_TOKEN;
+  if (!accessToken) {
+    throw new Error("POLAR_ACCESS_TOKEN environment variable is not set");
+  }
+  return new Polar({ accessToken });
+}
 
-const PRODUCT_IDS = {
-  pro_monthly_usd: process.env.POLAR_PRODUCT_PRO_MONTHLY_USD || "",
-  pro_monthly_eur: process.env.POLAR_PRODUCT_PRO_MONTHLY_EUR || "",
-  pro_yearly_usd: process.env.POLAR_PRODUCT_PRO_YEARLY_USD || "",
-  pro_yearly_eur: process.env.POLAR_PRODUCT_PRO_YEARLY_EUR || "",
-} as const;
+function getProductIds() {
+  return {
+    pro_monthly_usd: process.env.POLAR_PRODUCT_PRO_MONTHLY_USD || "",
+    pro_monthly_eur: process.env.POLAR_PRODUCT_PRO_MONTHLY_EUR || "",
+    pro_yearly_usd: process.env.POLAR_PRODUCT_PRO_YEARLY_USD || "",
+    pro_yearly_eur: process.env.POLAR_PRODUCT_PRO_YEARLY_EUR || "",
+  };
+}
 
-type ProductKey = keyof typeof PRODUCT_IDS;
+type ProductKey = "pro_monthly_usd" | "pro_monthly_eur" | "pro_yearly_usd" | "pro_yearly_eur";
 
 export const createCheckoutUrl = action({
   args: {
@@ -41,11 +47,13 @@ export const createCheckoutUrl = action({
       throw new Error("User not found");
     }
 
-    const productId = PRODUCT_IDS[productKey as ProductKey];
+    const productIds = getProductIds();
+    const productId = productIds[productKey as ProductKey];
     if (!productId) {
       throw new Error(`Invalid product key: ${productKey}`);
     }
 
+    const polar = getPolarClient();
     const checkout = await polar.checkouts.create({
       products: [productId],
       successUrl,

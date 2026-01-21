@@ -3,8 +3,17 @@ import { internalAction, internalQuery } from "./_generated/server";
 import { Resend } from "resend";
 import { internal } from "./_generated/api";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const APP_URL = process.env.APP_URL || "http://localhost:3000";
+function getResendClient() {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error("RESEND_API_KEY environment variable is not set");
+  }
+  return new Resend(apiKey);
+}
+
+function getAppUrl() {
+  return process.env.APP_URL || "http://localhost:3000";
+}
 
 function escapeHtml(unsafe: string): string {
   return unsafe
@@ -212,7 +221,7 @@ export const sendSigningRequest = internalAction({
       recipientId,
     });
 
-    const magicLink = `${APP_URL}/sign/${recipient.accessToken}`;
+    const magicLink = `${getAppUrl()}/sign/${recipient.accessToken}`;
 
     const html = createSigningRequestEmail({
       recipientName: recipient.name,
@@ -222,6 +231,7 @@ export const sendSigningRequest = internalAction({
     });
 
     try {
+      const resend = getResendClient();
       const result = await resend.emails.send({
         from: "Document Signing <noreply@yourdomain.com>",
         to: recipient.email,
@@ -241,18 +251,19 @@ export const sendSigningComplete = internalAction({
   args: {
     documentId: v.id("documents"),
   },
-  handler: async (ctx, { documentId }) => {
+  handler: async (ctx, { documentId }): Promise<any> => {
     const documentData = await ctx.runQuery(internal.email.getDocumentData, {
       documentId,
     });
 
-    const downloadLink = `${APP_URL}/documents/${documentId}/download`;
+    const downloadLink = `${getAppUrl()}/documents/${documentId}/download`;
 
     const allParties = [
       { email: documentData.ownerEmail, name: documentData.ownerName },
       ...documentData.recipients.map((r) => ({ email: r.email, name: r.name })),
     ];
 
+    const resend = getResendClient();
     const emailPromises = allParties.map(async (party) => {
       const html = createSigningCompleteEmail({
         recipientName: party.name,
@@ -289,7 +300,7 @@ export const sendReminder = internalAction({
       recipientId,
     });
 
-    const magicLink = `${APP_URL}/sign/${recipient.accessToken}`;
+    const magicLink = `${getAppUrl()}/sign/${recipient.accessToken}`;
 
     const html = createReminderEmail({
       recipientName: recipient.name,
@@ -299,6 +310,7 @@ export const sendReminder = internalAction({
     });
 
     try {
+      const resend = getResendClient();
       const result = await resend.emails.send({
         from: "Document Signing <noreply@yourdomain.com>",
         to: recipient.email,

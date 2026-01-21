@@ -7,3 +7,9 @@ node_modules
 dist
 build
 .convex
+
+# Navigator context markers
+.context-markers/
+
+# Navigator temporary files
+.agent/.nav-temp/

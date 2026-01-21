@@ -364,7 +364,7 @@ export const generateSignedPdf = internalAction({
 
     const signedPdfBytes = await pdfDoc.save();
 
-    const signedPdfBlob = new Blob([signedPdfBytes], { type: "application/pdf" });
+    const signedPdfBlob = new Blob([signedPdfBytes as any], { type: "application/pdf" });
     const signedPdfStorageId = await ctx.storage.store(signedPdfBlob);
 
     await ctx.runMutation(internal.pdfGeneration.updateDocumentWithSignedPdf, {
