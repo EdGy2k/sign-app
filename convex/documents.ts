@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -187,11 +188,10 @@ export const create = mutation({
       createdAt: now,
     });
 
-    await ctx.db.insert("auditLog", {
+    await ctx.scheduler.runAfter(0, internal.auditLog.log, {
       documentId: documentId,
       event: "created",
       actorEmail: user.email,
-      timestamp: now,
     });
 
     return documentId;
@@ -263,11 +263,10 @@ export const send = mutation({
       });
     }
 
-    await ctx.db.insert("auditLog", {
+    await ctx.scheduler.runAfter(0, internal.auditLog.log, {
       documentId: id,
       event: "sent",
       actorEmail: user.email,
-      timestamp: now,
     });
 
     return { success: true, accessTokensGenerated: recipients.length };
@@ -323,11 +322,10 @@ export const void_ = mutation({
       voidedReason: reason,
     });
 
-    await ctx.db.insert("auditLog", {
+    await ctx.scheduler.runAfter(0, internal.auditLog.log, {
       documentId: id,
       event: "voided",
       actorEmail: user.email,
-      timestamp: now,
     });
 
     return { success: true };
