@@ -234,7 +234,7 @@ export const sendSigningRequest = internalAction({
     try {
       const resend = getResendClient();
       const result = await resend.emails.send({
-        from: "Document Signing <noreply@yourdomain.com>",
+        from: "Document Signing <onboarding@resend.dev>",
         to: recipient.email,
         subject: `${escapeSubject(recipient.senderName)} sent you a document to sign`,
         html,
@@ -274,7 +274,7 @@ export const sendSigningComplete = internalAction({
 
       try {
         const result = await resend.emails.send({
-          from: "Document Signing <noreply@yourdomain.com>",
+          from: "Document Signing <onboarding@resend.dev>",
           to: party.email,
           subject: `Document "${escapeSubject(documentData.title)}" has been signed by all parties`,
           html,
@@ -313,7 +313,7 @@ export const sendReminder = internalAction({
     try {
       const resend = getResendClient();
       const result = await resend.emails.send({
-        from: "Document Signing <noreply@yourdomain.com>",
+        from: "Document Signing <onboarding@resend.dev>",
         to: recipient.email,
         subject: `Reminder: Please sign "${escapeSubject(recipient.documentTitle)}"`,
         html,
