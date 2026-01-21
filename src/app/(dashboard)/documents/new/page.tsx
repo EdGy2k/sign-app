@@ -13,8 +13,9 @@ const FieldEditor = dynamic(
 );
 import { ArrowLeft, ArrowRight, Upload, Plus } from "lucide-react";
 import Link from "next/link";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import { Id } from "../../../../../convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
 
 // Mock PDF for testing purposes if upload is cumbersome in prototype
@@ -25,6 +26,8 @@ export default function NewDocumentPage() {
     const [step, setStep] = useState(1);
     const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+    const [file, setFile] = useState<File | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     // Form state for recipients
     const [recipientName, setRecipientName] = useState("");
@@ -33,6 +36,8 @@ export default function NewDocumentPage() {
     const user = useQuery(api.users.me);
     const templates = useQuery(api.templates.listSystem, user ? undefined : "skip");
     const createDocument = useMutation(api.documents.create);
+    const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
+    const validateUploadedFile = useAction(api.storage.validateUploadedFile);
 
     if (user === undefined) {
         return <div className="p-8">Loading...</div>;
@@ -47,6 +52,8 @@ export default function NewDocumentPage() {
         if (file) {
             const url = URL.createObjectURL(file);
             setPdfUrl(url);
+            setFile(file);
+            setSelectedTemplate(null);
             setStep(2);
         }
     };
@@ -54,6 +61,7 @@ export default function NewDocumentPage() {
     const selectTemplate = (id: string) => {
         setSelectedTemplate(id);
         setPdfUrl(MOCK_PDF_URL); // In real app, fetch template PDF
+        setFile(null);
         setStep(2);
     };
 
@@ -61,27 +69,136 @@ export default function NewDocumentPage() {
         if (!createDocument) return;
 
         try {
-            // Basic creation logic
-            // Note: Since we don't have file upload wired to Storage yet, we can't fully create a document with file.
-            // But we can create one from template effectively.
-            if (selectedTemplate) {
-                await createDocument({
-                    title: "New Document from Template",
-                    templateId: selectedTemplate,
-                    // other fields would be needed in real app
-                } as any); // Casting as any because I don't have full args matching schema perfectly yet without more inputs
+            setIsUploading(true);
+            let storageId: Id<"_storage">;
 
-                // For now, let's just assume success and redirect
+            if (selectedTemplate) {
+                // Creating from template - logic might need adjustment if templates have their own storageId
+                // For now, ignoring this path as per task focus, or assuming template handling is separate.
+                // The prompt specifically fixed "Upload flow".
+                // But wait, the original code had a path for templates.
+                // I should keep the template path working as best as possible, but focusing on the upload path.
+                // Actually, looking at `api.documents.create`, it takes `originalPdfStorageId`.
+                // Templates in `schema.ts` have `pdfStorageId`.
+                // If using a template, we should probably pass that ID or copy it?
+                // The backend `create` mutation requires `originalPdfStorageId`.
+                // For now, I'll focus on the upload path which was broken. 
+                // If selectedTemplate is used, we need to handle that, but the error was "Upload flow requires backend storage integration".
+
+                // Let's implement the Upload flow properly first.
+
+                // If we have a file, it means we are uploading.
+                if (file) {
+                    // 1. Generate upload URL
+                    const postUrl = await generateUploadUrl();
+
+                    // 2. Upload file
+                    const result = await fetch(postUrl, {
+                        method: "POST",
+                        headers: { "Content-Type": file.type },
+                        body: file,
+                    });
+
+                    if (!result.ok) {
+                        throw new Error(`Upload failed: ${result.statusText}`);
+                    }
+
+                    const { storageId: uploadedStorageId } = await result.json();
+                    storageId = uploadedStorageId;
+
+                    // 3. Validate
+                    await validateUploadedFile({ storageId });
+
+                    await createDocument({
+                        title: file.name.replace(/\.pdf$/i, ""),
+                        originalPdfStorageId: storageId,
+                        // Basic empty fields for now, user would add them in step 2 in a real app
+                        // But step 2 was "FieldEditor". 
+                        // The current UI flow has 3 steps: 1 (Upload/Select), 2 (FieldEditor), 3 (Recipients/Send).
+                        // Step 2 is where fields should be defined.
+                        // The `FieldEditor` component probably doesn't save back to `page.tsx` state yet?
+                        // Checking imports, `FieldEditor` is imported.
+                        // The original code didn't have `fields` state lifting.
+                        // I will pass empty object/array for now to satisfy the mutation.
+                        fields: [],
+                        variableValues: {},
+                    });
+                } else if (selectedTemplate) {
+                    // The original code had:
+                    // await createDocument({ ... templateId: selectedTemplate ... })
+                    // But `createDocument` requires `originalPdfStorageId`. 
+                    // We need to fetch the template to get its storageId? OR the backend handle it?
+                    // Backend `create` mutation:
+                    // args: { title, templateId, originalPdfStorageId, ... }
+                    // It explicitly requires `originalPdfStorageId`.
+                    // This means the frontend needs to know it. 
+                    // The `templates` query returns `pdfStorageId`. 
+                    // I need to find the selected template object.
+                    const template = templates?.find((t: any) => t._id === selectedTemplate);
+                    if (!template?.pdfStorageId) {
+                        throw new Error("Template does not have a PDF file.");
+                    }
+
+                    await createDocument({
+                        title: "New Document from Template",
+                        templateId: selectedTemplate,
+                        originalPdfStorageId: template.pdfStorageId,
+                        fields: [],
+                        variableValues: {},
+                    });
+                } else {
+                    throw new Error("No file or template selected");
+                }
+
                 router.push("/documents");
             } else {
-                // Upload flow not fully implemented with backend storage yet
-                alert("Upload flow requires backend storage integration.");
+                // Steps above cover this structure better:
+                // I will rewrite this block to be cleaner.
+
+                let storageId: Id<"_storage">;
+                let title = "New Document";
+
+                if (file) {
+                    const postUrl = await generateUploadUrl();
+                    const result = await fetch(postUrl, {
+                        method: "POST",
+                        headers: { "Content-Type": file.type },
+                        body: file,
+                    });
+                    if (!result.ok) throw new Error(`Upload failed: ${result.statusText}`);
+                    const json = await result.json();
+                    storageId = json.storageId;
+
+                    await validateUploadedFile({ storageId });
+                    title = file.name.replace(/\.pdf$/i, "");
+
+                    await createDocument({
+                        title,
+                        originalPdfStorageId: storageId,
+                        fields: [],
+                        variableValues: {},
+                    });
+                } else if (selectedTemplate) {
+                    const template = templates?.find((t: any) => t._id === selectedTemplate);
+                    if (!template?.pdfStorageId) throw new Error("Template invalid");
+
+                    await createDocument({
+                        title: "New Document from Template",
+                        templateId: selectedTemplate,
+                        originalPdfStorageId: template.pdfStorageId,
+                        fields: [],
+                        variableValues: {},
+                    });
+                }
+
+                router.push("/documents");
             }
+
         } catch (error) {
             console.error("Failed to create document", error);
-            // alert("Failed to create document");
-            // For prototype purposes, redirect anyway
-            router.push("/documents");
+            alert("Failed to create document: " + (error as Error).message);
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -104,8 +221,8 @@ export default function NewDocumentPage() {
                         </Button>
                     )}
                     {step === 3 && (
-                        <Button className="bg-green-600 hover:bg-green-700" onClick={handleSendDocument}>
-                            Send Document
+                        <Button className="bg-green-600 hover:bg-green-700" onClick={handleSendDocument} disabled={isUploading}>
+                            {isUploading ? "Sending..." : "Send Document"}
                         </Button>
                     )}
                 </div>
