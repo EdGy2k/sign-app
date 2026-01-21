@@ -66,7 +66,7 @@ export default function NewDocumentPage() {
         setStep(2);
     };
 
-    const handleSendDocument = async () => {
+    const handleSendDocument = async (asDraft: boolean = false) => {
         if (!createDocument) return;
 
         try {
@@ -127,22 +127,24 @@ export default function NewDocumentPage() {
                 }
             }
 
-            // Send the document
-            // We assume 1 recipient for now based on the UI state variables
-            if (!recipientEmail || !recipientName) {
-                // Technically UI enforces this? No, it doesn't currently enabled check
-                throw new Error("Recipient name and email are required.");
-            }
+            if (!asDraft) {
+                // Send the document
+                // We assume 1 recipient for now based on the UI state variables
+                if (!recipientEmail || !recipientName) {
+                    // Technically UI enforces this? No, it doesn't currently enabled check
+                    throw new Error("Recipient name and email are required.");
+                }
 
-            await sendDocument({
-                id: documentId,
-                recipients: [{
-                    email: recipientEmail,
-                    name: recipientName,
-                    role: "signer",
-                    order: 1 // Default order
-                }]
-            });
+                await sendDocument({
+                    id: documentId,
+                    recipients: [{
+                        email: recipientEmail,
+                        name: recipientName,
+                        role: "signer",
+                        order: 1 // Default order
+                    }]
+                });
+            }
 
 
             router.push("/documents");
@@ -174,9 +176,14 @@ export default function NewDocumentPage() {
                         </Button>
                     )}
                     {step === 3 && (
-                        <Button className="bg-green-600 hover:bg-green-700" onClick={handleSendDocument} disabled={isUploading}>
-                            {isUploading ? "Sending..." : "Send Document"}
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={() => handleSendDocument(true)} disabled={isUploading}>
+                                Save as Draft
+                            </Button>
+                            <Button className="bg-green-600 hover:bg-green-700" onClick={() => handleSendDocument(false)} disabled={isUploading}>
+                                {isUploading ? "Sending..." : "Send Document"}
+                            </Button>
+                        </div>
                     )}
                 </div>
             </div>

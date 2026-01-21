@@ -21,6 +21,86 @@ const PdfViewer = dynamic(() => import("@/components/pdf/pdf-viewer"), {
     ssr: false
 });
 
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+function SendDocumentDialog({ documentId }: { documentId: Id<"documents"> }) {
+    const sendDocument = useMutation(api.documents.send);
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [open, setOpen] = useState(false);
+
+    const handleSend = async () => {
+        if (!name || !email) {
+            alert("Please fill in all fields");
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            await sendDocument({
+                id: documentId,
+                recipients: [{
+                    email,
+                    name,
+                    role: "signer",
+                    order: 1
+                }]
+            });
+            alert("Document sent!");
+            setOpen(false);
+        } catch (error) {
+            console.error(error);
+            alert("Failed to send document: " + (error as Error).message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button className="bg-green-600 hover:bg-green-700">
+                    <Send className="mr-2 h-4 w-4" /> Send Document
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Send Document</DialogTitle>
+                    <DialogDescription>
+                        Enter the recipient details to send this document for signing.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="name" className="text-right">Name</Label>
+                        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="email" className="text-right">Email</Label>
+                        <Input id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="col-span-3" />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button onClick={handleSend} disabled={isLoading}>
+                        {isLoading ? "Sending..." : "Send"}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 function ResendButton({ documentId, recipients }: { documentId: Id<"documents">, recipients: any[] }) {
     const resendReminder = useMutation(api.documents.resendReminder);
     const [isLoading, setIsLoading] = useState(false);
@@ -96,6 +176,9 @@ export default function DocumentDetailPage() {
                     {/* Future actions: Void, Download, etc. */}
                     {(document.status === "sent" || document.status === "viewed") && (
                         <ResendButton documentId={document._id} recipients={document.recipients} />
+                    )}
+                    {document.status === "draft" && (
+                        <SendDocumentDialog documentId={document._id} />
                     )}
                 </div>
             </div>
