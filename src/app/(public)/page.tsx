@@ -17,8 +17,11 @@ export default function LandingPage() {
                         Secure, legally binding, and designed to help you close deals faster.
                     </p>
                     <div className="space-x-4">
-                        <Button size="lg" asChild>
-                            <Link href="/sign-up">Start for Free <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                        <Button size="lg" asChild className="relative">
+                            <Link href="/sign-up">
+                                Start for Free
+                                <ArrowRight className="absolute right-4 h-4 w-4" />
+                            </Link>
                         </Button>
                         <Button size="lg" variant="outline" asChild>
                             <Link href="/pricing">View Pricing</Link>
