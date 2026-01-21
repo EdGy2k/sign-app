@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 
 export const getByToken = query({
   args: {
@@ -135,6 +136,26 @@ export const updateRecipientStatus = internalMutation({
     }
 
     await ctx.db.patch(args.recipientId, updateData);
+
+    if (args.status === "viewed") {
+      await ctx.scheduler.runAfter(0, internal.auditLog.log, {
+        documentId: recipient.documentId,
+        event: "viewed",
+        actorEmail: recipient.email,
+        ipAddress: args.ipAddress,
+        userAgent: args.userAgent,
+      });
+    }
+
+    if (args.status === "signed") {
+      await ctx.scheduler.runAfter(0, internal.auditLog.log, {
+        documentId: recipient.documentId,
+        event: "signed",
+        actorEmail: recipient.email,
+        ipAddress: args.ipAddress,
+        userAgent: args.userAgent,
+      });
+    }
 
     return { success: true };
   },
