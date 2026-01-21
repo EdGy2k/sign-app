@@ -6,12 +6,25 @@ import { internal } from "./_generated/api";
 const resend = new Resend(process.env.RESEND_API_KEY);
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
 
+function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function createSigningRequestEmail(params: {
   recipientName: string;
   senderName: string;
   documentTitle: string;
   magicLink: string;
 }) {
+  const safeRecipientName = escapeHtml(params.recipientName);
+  const safeSenderName = escapeHtml(params.senderName);
+  const safeDocumentTitle = escapeHtml(params.documentTitle);
+
   return `
     <!DOCTYPE html>
     <html>
@@ -30,10 +43,10 @@ function createSigningRequestEmail(params: {
                       You have a document to sign
                     </h1>
                     <p style="margin: 0 0 16px 0; font-size: 16px; line-height: 24px; color: #4a4a4a;">
-                      Hi ${params.recipientName},
+                      Hi ${safeRecipientName},
                     </p>
                     <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 24px; color: #4a4a4a;">
-                      ${params.senderName} has sent you a document titled <strong>"${params.documentTitle}"</strong> for your signature.
+                      ${safeSenderName} has sent you a document titled <strong>"${safeDocumentTitle}"</strong> for your signature.
                     </p>
                     <table cellpadding="0" cellspacing="0" style="margin: 0 0 24px 0;">
                       <tr>
@@ -70,6 +83,9 @@ function createSigningCompleteEmail(params: {
   documentTitle: string;
   downloadLink: string;
 }) {
+  const safeRecipientName = escapeHtml(params.recipientName);
+  const safeDocumentTitle = escapeHtml(params.documentTitle);
+
   return `
     <!DOCTYPE html>
     <html>
@@ -93,10 +109,10 @@ function createSigningCompleteEmail(params: {
                       Document Signed by All Parties
                     </h1>
                     <p style="margin: 0 0 16px 0; font-size: 16px; line-height: 24px; color: #4a4a4a;">
-                      Hi ${params.recipientName},
+                      Hi ${safeRecipientName},
                     </p>
                     <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 24px; color: #4a4a4a;">
-                      Great news! The document <strong>"${params.documentTitle}"</strong> has been signed by all parties and is now complete.
+                      Great news! The document <strong>"${safeDocumentTitle}"</strong> has been signed by all parties and is now complete.
                     </p>
                     <table cellpadding="0" cellspacing="0" style="margin: 0 0 24px 0;">
                       <tr>
@@ -130,6 +146,10 @@ function createReminderEmail(params: {
   magicLink: string;
   senderName: string;
 }) {
+  const safeRecipientName = escapeHtml(params.recipientName);
+  const safeSenderName = escapeHtml(params.senderName);
+  const safeDocumentTitle = escapeHtml(params.documentTitle);
+
   return `
     <!DOCTYPE html>
     <html>
@@ -148,10 +168,10 @@ function createReminderEmail(params: {
                       Reminder: Please Sign Document
                     </h1>
                     <p style="margin: 0 0 16px 0; font-size: 16px; line-height: 24px; color: #4a4a4a;">
-                      Hi ${params.recipientName},
+                      Hi ${safeRecipientName},
                     </p>
                     <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 24px; color: #4a4a4a;">
-                      This is a friendly reminder that ${params.senderName} is waiting for your signature on <strong>"${params.documentTitle}"</strong>.
+                      This is a friendly reminder that ${safeSenderName} is waiting for your signature on <strong>"${safeDocumentTitle}"</strong>.
                     </p>
                     <table cellpadding="0" cellspacing="0" style="margin: 0 0 24px 0;">
                       <tr>

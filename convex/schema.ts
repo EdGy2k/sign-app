@@ -19,7 +19,8 @@ export default defineSchema({
     billingCycleStart: v.number(),
     createdAt: v.number(),
   }).index("by_clerk_id", ["clerkId"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_polar_customer_id", ["polarCustomerId"]),
 
   templates: defineTable({
     name: v.string(),
