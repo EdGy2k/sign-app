@@ -36,6 +36,7 @@ export default function NewDocumentPage() {
     const user = useQuery(api.users.me);
     const templates = useQuery(api.templates.listSystem, user ? undefined : "skip");
     const createDocument = useMutation(api.documents.create);
+    const sendDocument = useMutation(api.documents.send);
     const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
     const validateUploadedFile = useAction(api.storage.validateUploadedFile);
 
@@ -71,93 +72,25 @@ export default function NewDocumentPage() {
         try {
             setIsUploading(true);
             let storageId: Id<"_storage">;
+            let documentId: Id<"documents">;
 
             if (selectedTemplate) {
-                // Creating from template - logic might need adjustment if templates have their own storageId
-                // For now, ignoring this path as per task focus, or assuming template handling is separate.
-                // The prompt specifically fixed "Upload flow".
-                // But wait, the original code had a path for templates.
-                // I should keep the template path working as best as possible, but focusing on the upload path.
-                // Actually, looking at `api.documents.create`, it takes `originalPdfStorageId`.
-                // Templates in `schema.ts` have `pdfStorageId`.
-                // If using a template, we should probably pass that ID or copy it?
-                // The backend `create` mutation requires `originalPdfStorageId`.
-                // For now, I'll focus on the upload path which was broken. 
-                // If selectedTemplate is used, we need to handle that, but the error was "Upload flow requires backend storage integration".
-
-                // Let's implement the Upload flow properly first.
-
-                // If we have a file, it means we are uploading.
-                if (file) {
-                    // 1. Generate upload URL
-                    const postUrl = await generateUploadUrl();
-
-                    // 2. Upload file
-                    const result = await fetch(postUrl, {
-                        method: "POST",
-                        headers: { "Content-Type": file.type },
-                        body: file,
-                    });
-
-                    if (!result.ok) {
-                        throw new Error(`Upload failed: ${result.statusText}`);
-                    }
-
-                    const { storageId: uploadedStorageId } = await result.json();
-                    storageId = uploadedStorageId;
-
-                    // 3. Validate
-                    await validateUploadedFile({ storageId });
-
-                    await createDocument({
-                        title: file.name.replace(/\.pdf$/i, ""),
-                        originalPdfStorageId: storageId,
-                        // Basic empty fields for now, user would add them in step 2 in a real app
-                        // But step 2 was "FieldEditor". 
-                        // The current UI flow has 3 steps: 1 (Upload/Select), 2 (FieldEditor), 3 (Recipients/Send).
-                        // Step 2 is where fields should be defined.
-                        // The `FieldEditor` component probably doesn't save back to `page.tsx` state yet?
-                        // Checking imports, `FieldEditor` is imported.
-                        // The original code didn't have `fields` state lifting.
-                        // I will pass empty object/array for now to satisfy the mutation.
-                        fields: [],
-                        variableValues: {},
-                    });
-                } else if (selectedTemplate) {
-                    // The original code had:
-                    // await createDocument({ ... templateId: selectedTemplate ... })
-                    // But `createDocument` requires `originalPdfStorageId`. 
-                    // We need to fetch the template to get its storageId? OR the backend handle it?
-                    // Backend `create` mutation:
-                    // args: { title, templateId, originalPdfStorageId, ... }
-                    // It explicitly requires `originalPdfStorageId`.
-                    // This means the frontend needs to know it. 
-                    // The `templates` query returns `pdfStorageId`. 
-                    // I need to find the selected template object.
-                    const template = templates?.find((t: any) => t._id === selectedTemplate);
-                    if (!template?.pdfStorageId) {
-                        throw new Error("Template does not have a PDF file.");
-                    }
-
-                    await createDocument({
-                        title: "New Document from Template",
-                        templateId: selectedTemplate,
-                        originalPdfStorageId: template.pdfStorageId,
-                        fields: [],
-                        variableValues: {},
-                    });
-                } else {
-                    throw new Error("No file or template selected");
+                // Fetch matches logic from below
+                // Refactoring to be unified would be better but keeping it robust for now
+                const template = templates?.find((t: any) => t._id === selectedTemplate);
+                if (!template?.pdfStorageId) {
+                    throw new Error("Template does not have a PDF file.");
                 }
 
-                router.push("/documents");
+                documentId = await createDocument({
+                    title: "New Document from Template",
+                    templateId: selectedTemplate,
+                    originalPdfStorageId: template.pdfStorageId,
+                    fields: [],
+                    variableValues: {},
+                });
+
             } else {
-                // Steps above cover this structure better:
-                // I will rewrite this block to be cleaner.
-
-                let storageId: Id<"_storage">;
-                let title = "New Document";
-
                 if (file) {
                     const postUrl = await generateUploadUrl();
                     const result = await fetch(postUrl, {
@@ -170,29 +103,49 @@ export default function NewDocumentPage() {
                     storageId = json.storageId;
 
                     await validateUploadedFile({ storageId });
-                    title = file.name.replace(/\.pdf$/i, "");
 
-                    await createDocument({
-                        title,
+                    documentId = await createDocument({
+                        title: file.name.replace(/\.pdf$/i, ""),
                         originalPdfStorageId: storageId,
                         fields: [],
                         variableValues: {},
                     });
                 } else if (selectedTemplate) {
+                    // Should trigger top block, but just in case
                     const template = templates?.find((t: any) => t._id === selectedTemplate);
                     if (!template?.pdfStorageId) throw new Error("Template invalid");
 
-                    await createDocument({
+                    documentId = await createDocument({
                         title: "New Document from Template",
                         templateId: selectedTemplate,
                         originalPdfStorageId: template.pdfStorageId,
                         fields: [],
                         variableValues: {},
                     });
+                } else {
+                    throw new Error("No file or template selected");
                 }
-
-                router.push("/documents");
             }
+
+            // Send the document
+            // We assume 1 recipient for now based on the UI state variables
+            if (!recipientEmail || !recipientName) {
+                // Technically UI enforces this? No, it doesn't currently enabled check
+                throw new Error("Recipient name and email are required.");
+            }
+
+            await sendDocument({
+                id: documentId,
+                recipients: [{
+                    email: recipientEmail,
+                    name: recipientName,
+                    role: "signer",
+                    order: 1 // Default order
+                }]
+            });
+
+
+            router.push("/documents");
 
         } catch (error) {
             console.error("Failed to create document", error);

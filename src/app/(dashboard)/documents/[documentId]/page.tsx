@@ -11,11 +11,44 @@ import { StatusBadge, DocumentStatus } from "@/components/documents/status-badge
 import dynamic from "next/dynamic";
 import { LoadingState } from "@/components/common/loading-state";
 
+import { RefreshCw, Send } from "lucide-react";
+import { useMutation } from "convex/react";
+import { useState } from "react";
+
 // Dynamically import PdfViewer to avoid SSR issues with canvas/pdfjs
 const PdfViewer = dynamic(() => import("@/components/pdf/pdf-viewer"), {
     loading: () => <LoadingState />,
     ssr: false
 });
+
+function ResendButton({ documentId, recipients }: { documentId: Id<"documents">, recipients: any[] }) {
+    const resendReminder = useMutation(api.documents.resendReminder);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleResend = async () => {
+        // Find first signer (simplified for now as per plan/req)
+        const recipient = recipients.find(r => r.role === "signer");
+        if (!recipient) return alert("No signer found to resend to.");
+
+        try {
+            setIsLoading(true);
+            await resendReminder({ documentId, recipientEmail: recipient.email });
+            alert("Reminder sent!");
+        } catch (error) {
+            console.error(error);
+            alert("Failed to send reminder: " + (error as Error).message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <Button variant="outline" size="sm" onClick={handleResend} disabled={isLoading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+            Resend Email
+        </Button>
+    );
+}
 
 export default function DocumentDetailPage() {
     const params = useParams();
@@ -61,6 +94,9 @@ export default function DocumentDetailPage() {
                 </div>
                 <div>
                     {/* Future actions: Void, Download, etc. */}
+                    {(document.status === "sent" || document.status === "viewed") && (
+                        <ResendButton documentId={document._id} recipients={document.recipients} />
+                    )}
                 </div>
             </div>
 
