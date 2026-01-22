@@ -255,6 +255,10 @@ export const send = mutation({
       throw new Error("At least one recipient is required");
     }
 
+    if (!document.fields || document.fields.length === 0) {
+      throw new Error("Please add at least one signature or data field before sending.");
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     for (const recipient of recipients) {
       if (!emailRegex.test(recipient.email)) {
@@ -488,7 +492,11 @@ export const addField = mutation({
     const document = await ctx.db.get(documentId);
     if (!document) throw new Error("Document not found");
     if (document.ownerId !== user._id) throw new Error("Unauthorized");
-    if (document.status !== "draft") throw new Error("Can only edit draft documents");
+
+    // Allow editing if draft, sent, or viewed (but not signed/expired/voided)
+    if (["signed", "expired", "voided"].includes(document.status)) {
+      throw new Error("Cannot edit document in current status");
+    }
 
     // Assign to first recipient by default (simplified logic for now)
     // We assume the user wants fields for the signer.
@@ -535,7 +543,10 @@ export const removeField = mutation({
     const document = await ctx.db.get(documentId);
     if (!document) throw new Error("Document not found");
     if (document.ownerId !== user._id) throw new Error("Unauthorized");
-    if (document.status !== "draft") throw new Error("Can only edit draft documents");
+
+    if (["signed", "expired", "voided"].includes(document.status)) {
+      throw new Error("Cannot edit document in current status");
+    }
 
     const fields = document.fields.filter(f => f.id !== fieldId);
 

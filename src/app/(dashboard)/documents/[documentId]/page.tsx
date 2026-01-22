@@ -263,7 +263,7 @@ export default function DocumentDetailPage() {
                         </div>
                     )}
                 </div>
-                {document.status === "draft" && (
+                {(document.status === "draft" || document.status === "sent" || document.status === "viewed") && (
                     <FieldsSidebar documentId={document._id} fields={document.fields || []} />
                 )}
             </div>
