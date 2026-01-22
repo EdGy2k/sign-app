@@ -11,7 +11,7 @@ import { StatusBadge, DocumentStatus } from "@/components/documents/status-badge
 import dynamic from "next/dynamic";
 import { LoadingState } from "@/components/common/loading-state";
 
-import { RefreshCw, Send } from "lucide-react";
+import { RefreshCw, Send, Trash2, Plus } from "lucide-react"; // Added Trash2, Plus
 import { useMutation } from "convex/react";
 import { useState } from "react";
 
@@ -32,6 +32,75 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+function FieldsSidebar({ documentId, fields }: { documentId: Id<"documents">, fields: any[] }) {
+    const addField = useMutation(api.documents.addField);
+    const removeField = useMutation(api.documents.removeField);
+    const [isAdding, setIsAdding] = useState(false);
+
+    const handleAddField = async (type: "signature" | "text" | "date", label: string) => {
+        try {
+            setIsAdding(true);
+            await addField({ documentId, type, label });
+        } catch (error) {
+            console.error(error);
+            alert("Failed to add field");
+        } finally {
+            setIsAdding(false);
+        }
+    };
+
+    const handleRemoveField = async (fieldId: string) => {
+        if (!confirm("Remove this field?")) return;
+        try {
+            await removeField({ documentId, fieldId });
+        } catch (error) {
+            console.error(error);
+            alert("Failed to remove field");
+        }
+    };
+
+    return (
+        <div className="w-80 bg-white border-l p-4 flex flex-col gap-6 overflow-y-auto">
+            <div>
+                <h3 className="font-semibold mb-4">Add Fields</h3>
+                <div className="space-y-2">
+                    <Button variant="outline" className="w-full justify-start" onClick={() => handleAddField("signature", "Signature")} disabled={isAdding}>
+                        <Plus className="mr-2 h-4 w-4" /> Signature
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start" onClick={() => handleAddField("date", "Date")} disabled={isAdding}>
+                        <Plus className="mr-2 h-4 w-4" /> Date
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start" onClick={() => handleAddField("text", "Text Input")} disabled={isAdding}>
+                        <Plus className="mr-2 h-4 w-4" /> Text Input
+                    </Button>
+                </div>
+            </div>
+
+            <div>
+                <h3 className="font-semibold mb-4">Current Fields ({fields.length})</h3>
+                <div className="space-y-2">
+                    {fields.length === 0 && (
+                        <div className="text-sm text-muted-foreground italic text-center py-4 border border-dashed rounded-lg">
+                            No fields added yet.<br />Add a field to enable signing.
+                        </div>
+                    )}
+                    {fields.map((field) => (
+                        <div key={field.id} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
+                            <div className="flex flex-col">
+                                <span className="font-medium text-sm">{field.label}</span>
+                                <span className="text-xs text-muted-foreground capitalize">{field.type}</span>
+                            </div>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => handleRemoveField(field.id)}>
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
 
 function SendDocumentDialog({ documentId }: { documentId: Id<"documents"> }) {
     const sendDocument = useMutation(api.documents.send);
@@ -183,13 +252,19 @@ export default function DocumentDetailPage() {
                 </div>
             </div>
 
-            <div className="flex-1 bg-gray-50 rounded-lg p-4 overflow-hidden flex flex-col">
-                {document.originalPdfUrl ? (
-                    <PdfViewer url={document.originalPdfUrl} />
-                ) : (
-                    <div className="flex items-center justify-center h-full text-muted-foreground">
-                        PDF not available
-                    </div>
+
+            <div className="flex-1 overflow-hidden flex">
+                <div className="flex-1 bg-gray-50 p-4 overflow-hidden flex flex-col">
+                    {document.originalPdfUrl ? (
+                        <PdfViewer url={document.originalPdfUrl} />
+                    ) : (
+                        <div className="flex items-center justify-center h-full text-muted-foreground">
+                            PDF not available
+                        </div>
+                    )}
+                </div>
+                {document.status === "draft" && (
+                    <FieldsSidebar documentId={document._id} fields={document.fields || []} />
                 )}
             </div>
         </div>

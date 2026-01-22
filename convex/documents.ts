@@ -461,3 +461,84 @@ export const resendReminder = mutation({
     return { success: true, message: "Email reminder will be sent" };
   },
 });
+
+export const addField = mutation({
+  args: {
+    documentId: v.id("documents"),
+    type: v.union(
+      v.literal("signature"),
+      v.literal("date"),
+      v.literal("text"),
+      v.literal("initials"),
+      v.literal("checkbox")
+    ),
+    label: v.string(),
+  },
+  handler: async (ctx, { documentId, type, label }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) throw new Error("User not found");
+
+    const document = await ctx.db.get(documentId);
+    if (!document) throw new Error("Document not found");
+    if (document.ownerId !== user._id) throw new Error("Unauthorized");
+    if (document.status !== "draft") throw new Error("Can only edit draft documents");
+
+    // Assign to first recipient by default (simplified logic for now)
+    // We assume the user wants fields for the signer.
+    // If we support multiple signers later, we need a selector.
+    // For now, hardcode "recipient" (first signer).
+
+    const newField = {
+      id: crypto.randomUUID(),
+      type,
+      label,
+      x: 0, // Not used in list view
+      y: 0,
+      width: 0,
+      height: 0,
+      page: 1,
+      assignedTo: "recipient" as const, // Force cast to match union
+      required: true,
+    };
+
+    const fields = document.fields || [];
+    fields.push(newField);
+
+    await ctx.db.patch(documentId, { fields });
+    return newField;
+  },
+});
+
+export const removeField = mutation({
+  args: {
+    documentId: v.id("documents"),
+    fieldId: v.string(),
+  },
+  handler: async (ctx, { documentId, fieldId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) throw new Error("User not found");
+
+    const document = await ctx.db.get(documentId);
+    if (!document) throw new Error("Document not found");
+    if (document.ownerId !== user._id) throw new Error("Unauthorized");
+    if (document.status !== "draft") throw new Error("Can only edit draft documents");
+
+    const fields = document.fields.filter(f => f.id !== fieldId);
+
+    await ctx.db.patch(documentId, { fields });
+  },
+});
