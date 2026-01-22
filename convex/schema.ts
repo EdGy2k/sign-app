@@ -16,6 +16,8 @@ export default defineSchema({
     planExpiresAt: v.optional(v.number()),
     polarCustomerId: v.optional(v.string()),
     logoStorageId: v.optional(v.id("_storage")),
+    role: v.optional(v.union(v.literal("user"), v.literal("admin"))),
+    isBanned: v.optional(v.boolean()),
     billingCycleStart: v.number(),
     createdAt: v.number(),
   }).index("by_clerk_id", ["clerkId"])
