@@ -57,6 +57,7 @@ export const getByToken = query({
         title: document.title,
         status: document.status,
         originalPdfStorageId: document.originalPdfStorageId,
+        url: await ctx.storage.getUrl(document.originalPdfStorageId),
         fields: fieldsForRecipient,
         expiresAt: document.expiresAt,
       },
